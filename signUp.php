@@ -18,7 +18,12 @@ if(isset($_POST["submitButton"])){
     $password = formSanitizer::sanitizeFormPassword($_POST['password']);
     $password2 = formSanitizer::sanitizeFormPassword($_POST['password2']);
 
-    $account->register($firstName, $lastName, $username, $email, $email2, $password, $password2);
+    $wasSuccessful = $account->register($firstName, $lastName, $username, $email, $email2, $password, $password2);
+
+    if($wasSuccessful){
+        //Éxito
+        //Redireccionar al usuario a index.php
+    }
 }
 ?>
 <!DOCTYPE html>
