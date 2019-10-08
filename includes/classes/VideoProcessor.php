@@ -4,21 +4,13 @@ class VideoProcessor {
     private $con;
     private $sizeLimit = 500000000;
     private $allowedTypes = array("mp4", "flv", "webm", "mkv", "vob", "ogv", "ogg", "avi", "wmv", "mov", "mpeg", "mpg");
-    
-    // *** UNCOMMENT ONE OF THESE DEPENDING ON YOUR COMPUTER ***
-    //private $ffmpegPath = "ffmpeg/mac/regular-xampp/ffmpeg"; // *** MAC (USING REGULAR XAMPP) ***
-    //private $ffmpegPath = "ffmpeg/mac/xampp-VM/ffmpeg"; // *** MAC (USING XAMPP VM) ***
-    //private $ffmpegPath = "ffmpeg/linux/ffmpeg"; // *** LINUX ***
-    private $ffmpegPath = "ffmpeg/bin/ffmpeg.exe"; //  *** WINDOWS ***
-
-    // *** ALSO UNCOMMENT ONE OF THESE DEPENDING ON YOUR COMPUTER ***
-    //private $ffprobePath = "ffmpeg/mac/regular-xampp/ffprobe"; // *** MAC (USING REGULAR XAMPP) ***
-    //private $ffprobePath = "ffmpeg/mac/xampp-VM/ffprobe"; // *** MAC (USING XAMPP VM) ***
-    //private $ffprobePath = "ffmpeg/linux/ffprobe"; // *** LINUX ***
-    private $ffprobePath = "ffmpeg/bin/ffprobe.exe"; //  *** WINDOWS ***
+    private $ffmpegPath;
+    private $ffprobePath;
 
     public function __construct($con) {
         $this->con = $con;
+        $this->ffmpegPath = realpath("ffmpeg/windows/ffmpeg.exe");
+        $this->ffprobePath = realpath("ffmpeg/windows/ffprobe.exe");
     }
 
     public function upload($videoUploadData) {
@@ -39,22 +31,22 @@ class VideoProcessor {
             $finalFilePath = $targetDir . uniqid() . ".mp4";
 
             if(!$this->insertVideoData($videoUploadData, $finalFilePath)) {
-                echo "Consulta Fallida\n";
+                echo "Insert query failed\n";
                 return false;
             }
 
             if(!$this->convertVideoToMp4($tempFilePath, $finalFilePath)) {
-                echo "Subida Fallida\n";
+                echo "Upload failed\n";
                 return false;
             }
 
             if(!$this->deleteFile($tempFilePath)) {
-                echo "Subida Fallida x2\n";
+                echo "Upload failed\n";
                 return false;
             }
 
             if(!$this->generateThumbnails($finalFilePath)) {
-                echo "Subida Fallida - no se pudo generar thumbnails\n";
+                echo "Upload failed - could not generate thumbnails\n";
                 return false;
             }
 
@@ -67,11 +59,11 @@ class VideoProcessor {
         $videoType = pathInfo($filePath, PATHINFO_EXTENSION);
         
         if(!$this->isValidSize($videoData)) {
-            echo "Archivo muy grande. Limite de subida " . $this->sizeLimit . " bytes";
+            echo "File too large. Can't be more than " . $this->sizeLimit . " bytes";
             return false;
         }
         else if(!$this->isValidType($videoType)) {
-            echo "Tipo de archivo invalido";
+            echo "Invalid file type";
             return false;
         }
         else if($this->hasError($videoData)) {
@@ -110,7 +102,7 @@ class VideoProcessor {
     }
 
     public function convertVideoToMp4($tempFilePath, $finalFilePath) {
-        $cmd = "$this->ffmpegPath -i $tempFilePath $finalFilePath";
+        $cmd = "$this->ffmpegPath -i $tempFilePath $finalFilePath 2>&1";
 
         $outputLog = array();
         exec($cmd, $outputLog, $returnCode);
@@ -128,7 +120,7 @@ class VideoProcessor {
 
     private function deleteFile($filePath) {
         if(!unlink($filePath)) {
-            echo "No se pudo eliminar el archivo.\n";
+            echo "Could not delete file\n";
             return false;
         }
 
@@ -151,7 +143,7 @@ class VideoProcessor {
             $interval = ($duration * 0.8) / $numThumbnails * $num;
             $fullThumbnailPath = "$pathToThumbnail/$videoId-$imageName";
 
-            $cmd = "$this->ffmpegPath -i $filePath -ss $interval -s $thumbnailSize -vframes 1 $fullThumbnailPath";
+            $cmd = "$this->ffmpegPath -i $filePath -ss $interval -s $thumbnailSize -vframes 1 $fullThumbnailPath 2>&1";
 
             $outputLog = array();
             exec($cmd, $outputLog, $returnCode);
@@ -162,6 +154,7 @@ class VideoProcessor {
                     echo $line . "<br>";
                 }
             }
+            $selected = $num == 1 ? 1 : 0;
 
             $query = $this->con->prepare("INSERT INTO thumbnails(videoId, filePath, selected)
                                         VALUES(:videoId, :filePath, :selected)");
@@ -169,12 +162,10 @@ class VideoProcessor {
             $query->bindParam(":filePath", $fullThumbnailPath);
             $query->bindParam(":selected", $selected);
 
-            $selected = $num == 1 ? 1 : 0;
-
             $success = $query->execute();
 
             if(!$success) {
-                echo "Error al insertar el thumbail\n";
+                echo "Error inserting thumbail\n";
                 return false;
             }
         }

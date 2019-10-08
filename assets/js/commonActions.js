@@ -17,3 +17,7 @@ $(document).ready(function() {
     });
 
 });
+
+function notSignedIn(){
+    alert("asdasd asdsa dsadsa ds dad adadsd ds dsad");
+}

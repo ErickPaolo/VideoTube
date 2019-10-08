@@ -1,8 +1,35 @@
-<?php require_once("includes/config.php"); ?>
+<?php 
+require_once("includes/config.php");
+require_once("includes/classes/Account.php");
+require_once("includes/classes/Constants.php"); 
+require_once("includes/classes/FormSanitizer.php"); 
+
+$account = new Account($con);
+
+if(isset($_POST["submitButton"])) {
+    
+    $username = FormSanitizer::sanitizeFormUsername($_POST["username"]);
+    $password = FormSanitizer::sanitizeFormPassword($_POST["password"]);
+
+    $wasSuccessful = $account->login($username, $password);
+
+    if($wasSuccessful) {
+        $_SESSION["userLoggedIn"] = $username;
+        header("Location: index.php");
+    }
+
+}
+
+function getInputValue($name) {
+    if(isset($_POST[$name])) {
+        echo $_POST[$name];
+    }
+}
+?>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sign In | VideoTube</title>
+    <title>VideoTube</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="assets/css/style.css">
@@ -15,22 +42,37 @@
 <body>
 
     <div class="signInContainer">
+
         <div class="column">
+
             <div class="header">
                 <img src="assets/images/icons/VideoTubeLogo.png" title="logo" alt="Site logo">
-                <h3>Inicia Sesión</h3>
-                <span>para continuar en VideoTube</span>
+                <h3>Sign In</h3>
+                <span>to continue to VideoTube</span>
             </div>
+
             <div class="loginForm">
-                <form action="signIn.php" >
-                    <input type="text" name="username" placeholder="Usuario" required autocomplete="off">
-                    <input type="password" name="password" placeholder="Contraseña" required>
-                    <input type="submit" name="submitButton" value="Ingresar">
+
+                <form action="signIn.php" method="POST">
+                    <?php echo $account->getError(Constants::$loginFailed); ?>
+                    <input type="text" name="username" placeholder="Username" value="<?php getInputValue('username'); ?>" 
+                    required autocomplete="off">
+                    <input type="password" name="password" placeholder="Password" required>
+                    <input type="submit" name="submitButton" value="SUBMIT">
+                
                 </form>
+
+
             </div>
-            <a class="signInMessage" href="signUp.php">Necesitas una cuenta? Registrarte aquí!</a>
+
+            <a class="signInMessage" href="signUp.php">Need an account? Sign up here!</a>
+        
         </div>
+    
     </div>
+
+
+
 
 </body>
 </html>
